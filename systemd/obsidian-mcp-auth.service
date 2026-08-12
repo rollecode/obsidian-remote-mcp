@@ -10,6 +10,8 @@ WorkingDirectory=/home/YOUR_USER/obsidian-remote-mcp
 Environment=PORT=8422
 Environment=UPSTREAM=http://127.0.0.1:8420
 Environment=ISSUER=https://obsidian-mcp.example.com
+# Optional, but avoids being asked which vault on every call when serving more than one.
+Environment=DEFAULT_VAULT=your-vault
 ExecStart=/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/auth-server.js
 Restart=on-failure
 RestartSec=5

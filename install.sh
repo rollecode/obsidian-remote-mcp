@@ -91,7 +91,10 @@ while [ -z "$VAULT" ]; do
   # the vault has been opened in the app at least once.
   [ -d "$VAULT/.obsidian" ] || warn "No .obsidian folder there - is that really a vault?"
 done
-ok "vault: $VAULT"
+# obsidian-mcp registers a vault under a slug of its folder name, so
+# "My Notes" is addressed as "my-notes".
+VAULT_SLUG=$(basename "$VAULT" | tr '[:upper:]' '[:lower:]' | tr -c '[:alnum:]\n' '-' | sed 's/-\+/-/g; s/^-//; s/-$//')
+ok "vault: $VAULT (as \"$VAULT_SLUG\")"
 
 HOSTNAME_PUBLIC="${HOSTNAME:-}"
 while [ -z "$HOSTNAME_PUBLIC" ]; do
@@ -192,6 +195,7 @@ Environment=PORT=$AUTH_PORT
 Environment=UPSTREAM=http://127.0.0.1:$MCP_PORT
 Environment=ISSUER=$ISSUER
 Environment=CONFIG_DIR=$CONFIG_DIR
+Environment=DEFAULT_VAULT=$VAULT_SLUG
 ExecStart=$NODE_BIN $INSTALL_DIR/auth-server.js
 Restart=on-failure
 RestartSec=5

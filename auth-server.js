@@ -1,19 +1,8 @@
 #!/usr/bin/env node
 //
 // OAuth 2.1 authorization server + resource guard in front of the Obsidian MCP.
-//
-// claude.ai's custom connectors speak only OAuth (or a beta request-header
-// feature not everyone has), while Claude Code can send a static bearer token.
-// This serves both: an OAuth 2.1 flow per the MCP 2025-06-18 auth spec, and the
-// pre-existing static token, so adding claude.ai support does not break the
-// Claude Code connection that already works.
-//
-// Implements: RFC 9728 protected-resource metadata, RFC 8414 AS metadata,
-// RFC 7591 dynamic client registration, OAuth 2.1 authorization code + PKCE
-// (S256 only), refresh token rotation, and RFC 8707 resource/audience binding.
-//
-// Single user by design. "Authenticating" means proving you know the password
-// in ~/.config/obsidian-mcp/password-hash; there are no accounts.
+// Accepts either an OAuth token (claude.ai) or a static bearer token (Claude Code).
+// RFC 9728, RFC 8414, RFC 7591, PKCE S256, RFC 8707 audience binding. Single user.
 
 'use strict';
 
@@ -36,6 +25,7 @@ if (!ISSUER) {
 // the form without it.
 const RESOURCE = `${ISSUER}/mcp`;
 
+const DEFAULT_VAULT = process.env.DEFAULT_VAULT || '';
 const CONFIG_DIR = process.env.CONFIG_DIR || path.join(os.homedir(), '.config', 'obsidian-mcp');
 const DB_PATH = path.join(CONFIG_DIR, 'oauth.db');
 const PASSWORD_HASH_PATH = path.join(CONFIG_DIR, 'password-hash');
@@ -446,6 +436,48 @@ function authorizeRequest(req, res, next) {
   next();
 }
 
+// Clients may send a protocol version newer than the upstream SDK accepts, so
+// the version it negotiated at initialize is enforced instead.
+const sessionProtocol = new Map();
+const MAX_TRACKED_SESSIONS = 500;
+
+function rememberProtocol(sessionId, version) {
+  if (!sessionId || !version) return;
+  if (sessionProtocol.size >= MAX_TRACKED_SESSIONS) {
+    sessionProtocol.delete(sessionProtocol.keys().next().value);
+  }
+  sessionProtocol.set(sessionId, version);
+}
+
+// Transform the JSON inside an SSE frame, leaving the framing intact.
+function rewriteSse(text, transform) {
+  return text.replace(/^data: (.+)$/gm, (line, json) => {
+    try {
+      return 'data: ' + JSON.stringify(transform(JSON.parse(json)));
+    } catch {
+      return line;
+    }
+  });
+}
+
+// With a default vault set, drop `vault` from each tool's required list so the
+// client stops asking which one to use on every call.
+function relaxVaultRequirement(msg) {
+  const tools = msg?.result?.tools;
+  if (!Array.isArray(tools)) return msg;
+  for (const tool of tools) {
+    const schema = tool.inputSchema;
+    if (!schema?.properties?.vault) continue;
+    if (Array.isArray(schema.required)) {
+      schema.required = schema.required.filter((r) => r !== 'vault');
+      if (schema.required.length === 0) delete schema.required;
+    }
+    schema.properties.vault.description =
+      `Name of the vault. Defaults to "${DEFAULT_VAULT}" when omitted.`;
+  }
+  return msg;
+}
+
 // Streamable HTTP keeps the response open, so this proxies by stream rather
 // than buffering. express.json() has already consumed the body, so it is
 // re-serialised on the way out.
@@ -456,6 +488,26 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
     const key = k.toLowerCase();
     if (['host', 'connection', 'content-length', 'authorization'].includes(key)) continue;
     headers[key] = v;
+  }
+
+  const rpcMethod =
+    req.body && typeof req.body === 'object' ? req.body.method : undefined;
+  const isInitialize = rpcMethod === 'initialize';
+  const isToolsList = rpcMethod === 'tools/list';
+  const clientSessionId = req.get('mcp-session-id');
+
+  if (DEFAULT_VAULT && rpcMethod === 'tools/call') {
+    const args = req.body?.params?.arguments;
+    if (args && typeof args === 'object' && !args.vault) args.vault = DEFAULT_VAULT;
+  }
+
+  if (isInitialize) {
+    // Negotiation happens in the body; the header would be rejected first.
+    delete headers['mcp-protocol-version'];
+  } else {
+    const negotiated = clientSessionId ? sessionProtocol.get(clientSessionId) : undefined;
+    if (negotiated) headers['mcp-protocol-version'] = negotiated;
+    else delete headers['mcp-protocol-version'];
   }
 
   let body;
@@ -472,6 +524,22 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
       res.set(key, value);
     });
     if (!upstream.body) return res.end();
+
+    const newSessionId = upstream.headers.get('mcp-session-id') || clientSessionId;
+
+    // Small enough to buffer; everything else streams.
+    if (isInitialize) {
+      const text = await upstream.text();
+      const match = text.match(/"protocolVersion"\s*:\s*"([^"]+)"/);
+      if (match) rememberProtocol(newSessionId, match[1]);
+      res.end(text);
+      return;
+    }
+    if (isToolsList && DEFAULT_VAULT) {
+      res.end(rewriteSse(await upstream.text(), relaxVaultRequirement));
+      return;
+    }
+
     const reader = upstream.body.getReader();
     for (;;) {
       const { done, value } = await reader.read();

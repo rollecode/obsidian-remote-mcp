@@ -10,7 +10,7 @@ Obsidian remote MCP server
 </h1>
 
 
-![Version](https://img.shields.io/badge/version-1.1.2-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.2.0-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
 
 </div>
 </center>
@@ -179,6 +179,7 @@ Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}`
 | `PORT` | `8422` | Port the auth server listens on |
 | `UPSTREAM` | `http://127.0.0.1:8420` | Where supergateway is listening |
 | `CONFIG_DIR` | `~/.config/obsidian-mcp` | Password hash, static token, OAuth database |
+| `DEFAULT_VAULT` | unset | Vault used when a tool call omits one. Serving more than one vault without this makes Claude ask which to use on every call |
 
 ## Security
 

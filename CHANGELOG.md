@@ -1,3 +1,9 @@
+### 1.2.0: 2026-08-13
+
+* Fix tool calls failing from Claude.ai
+* Add DEFAULT_VAULT so clients stop asking
+* Derive the vault slug in the installer
+
 ### 1.1.2: 2026-08-12
 
 * Name and link every sync method properly
