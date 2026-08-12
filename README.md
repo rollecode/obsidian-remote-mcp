@@ -4,7 +4,11 @@
 
 Obsidian remote MCP server
 
+<img style="justify-content:center;text-align: center;width: 95px; height: auto;" width="793" height="411" alt="image" src="https://github.com/user-attachments/assets/abed1a04-d69b-4ab4-a490-d606064df72d" />
+<img style="justify-content:center;text-align: center;width: 250px; height: auto;" alt="image" src="https://github.com/user-attachments/assets/334c2e4d-d56d-4462-89bb-3443195ef68d" />
+
 </h1>
+
 
 ![Version](https://img.shields.io/badge/version-1.0.0-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
 
