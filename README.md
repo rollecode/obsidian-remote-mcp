@@ -21,6 +21,13 @@ Reach your Obsidian vault from anywhere, in Claude.ai and Claude Code, without O
 
 <hr>
 
+## Requirements
+
+- An always-on Linux machine, such as a home server, a NAS or a VPS
+- Your vault synced to it with [headless Obsidian Sync](https://obsidian.md/help/sync/headless) ([walkthrough](https://rolle.design/setting-up-a-headless-obsidian-instance-for-syncing)), Syncthing, git or Nextcloud
+- Node.js 18 or newer
+- An HTTPS reverse proxy or tunnel
+
 ## Features
 
 - Read and write your vault from Claude.ai and Claude Code
@@ -44,9 +51,49 @@ Only the auth server is reachable from outside. Port 8420 speaks no authenticati
 
 Claude.ai custom connectors accept OAuth or, in a beta not everyone has, a fixed request header. Claude Code accepts a header directly. This serves both: an OAuth 2.1 flow per the MCP 2025-06-18 authorization spec, and a static token read from a file.
 
-## Setup
+## Install
 
-### 1. Install
+One command, on the machine that holds the vault. It installs the code, generates a password and a token, and writes the service files ready to start.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/rollecode/obsidian-remote-mcp/main/install.sh | bash
+```
+
+It asks for your vault path and the hostname you will serve on. To skip the questions:
+
+```bash
+VAULT=/home/you/Documents/YourVault HOSTNAME=obsidian-mcp.example.com \
+  curl -fsSL https://raw.githubusercontent.com/rollecode/obsidian-remote-mcp/main/install.sh | bash
+```
+
+## Install with Claude Code
+
+Claude Code can do the whole thing, including the tunnel and the reverse proxy, which the installer deliberately leaves alone because every setup differs. Start it in an empty directory:
+
+```bash
+claude
+```
+
+Then give it this:
+
+```
+Install https://github.com/rollecode/obsidian-remote-mcp on this machine.
+
+Read the repository's README for the architecture and the manual setup steps, then work out what applies here rather than assuming. Specifically:
+
+1. Find my Obsidian vault and confirm the path with me before using it.
+2. Install the code and dependencies, set a login password, and generate a static token for Claude Code.
+3. Install and start both systemd services with the real paths for this machine.
+4. Expose it over HTTPS on a hostname I give you. Check what I already run - Cloudflare Tunnel, nginx, Caddy, Traefik - and use that rather than installing something new. Never open a router port without asking me first.
+5. Verify it end to end: the discovery endpoints return valid JSON, an unauthenticated request gets 401 with a WWW-Authenticate header, and the static token gets a 200 from the MCP endpoint.
+6. Print the Claude.ai connector URL and the exact claude mcp add command for Claude Code, and tell me the password.
+
+This exposes read and write access to my notes over the internet, so tell me anything that weakens that before you do it.
+```
+
+## Manual setup
+
+Install first:
 
 ```bash
 git clone https://github.com/rollecode/obsidian-remote-mcp.git
@@ -54,15 +101,13 @@ cd obsidian-remote-mcp
 npm install
 ```
 
-### 2. Set a password
-
-This is what you type on the OAuth login page. It is stored as a scrypt hash.
+Then set a password. This is what you type on the OAuth login page, and only its scrypt hash is stored.
 
 ```bash
 node set-password.js 'your-password-here'
 ```
 
-### 3. Optional: a static token for Claude Code
+Generate a static token if you want to use Claude Code, which can send a header directly and skip the login page.
 
 ```bash
 mkdir -p ~/.config/obsidian-mcp
@@ -70,9 +115,7 @@ openssl rand -hex 32 > ~/.config/obsidian-mcp/token
 chmod 600 ~/.config/obsidian-mcp/token
 ```
 
-### 4. Install the services
-
-Copy the unit files, replacing `YOUR_USER`, the vault path and `ISSUER` with your own:
+Install the services, replacing `YOUR_USER`, the vault path and `ISSUER` in the unit files with your own.
 
 ```bash
 sudo cp systemd/*.service /etc/systemd/system/
@@ -80,9 +123,7 @@ sudo systemctl daemon-reload
 sudo systemctl enable --now obsidian-mcp obsidian-mcp-auth
 ```
 
-### 5. Expose it
-
-Add the nginx site from `nginx/obsidian-mcp.conf`, then point a Cloudflare Tunnel at `http://localhost:8421`:
+Expose it. Add the nginx site from `nginx/obsidian-mcp.conf`, then point a Cloudflare Tunnel at `http://localhost:8421`. Any HTTPS reverse proxy works, but a tunnel avoids opening a router port.
 
 ```yaml
 ingress:
@@ -95,13 +136,9 @@ cloudflared tunnel route dns YOUR_TUNNEL obsidian-mcp.example.com
 sudo systemctl restart cloudflared
 ```
 
-Any HTTPS reverse proxy works. A tunnel avoids opening a router port.
+Finally, connect. In Claude.ai go to **Customize** &rarr; **Connectors** &rarr; **Add custom connector**, enter `https://obsidian-mcp.example.com/mcp` and leave **Client ID** and **Client Secret** blank, since the server registers Claude automatically. You will be asked for the password you set earlier. Remember to enable the connector in each conversation from the **+** menu.
 
-### 6. Connect
-
-Claude.ai, Customize > Connectors > Add custom connector. Enter `https://obsidian-mcp.example.com/mcp` and leave Client ID and Client Secret blank - the server registers Claude automatically. You will be asked for the password from step 2.
-
-Claude Code, using the static token from step 3:
+For Claude Code, use the static token.
 
 ```bash
 claude mcp add --transport http obsidian https://obsidian-mcp.example.com/mcp \
@@ -161,9 +198,3 @@ Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}`
 - The password is stored as a scrypt hash, compared in constant time
 
 This grants write access to your vault over the internet. Use a strong password, keep `ISSUER` on HTTPS, and remember that anyone holding the static token has the same access without the login page.
-
-## Requirements
-
-- Node.js 18 or newer
-- An HTTPS reverse proxy or tunnel, since OAuth 2.1 requires HTTPS
-- Obsidian is not required, and does not need to be running
