@@ -10,7 +10,7 @@ Obsidian remote MCP server
 </h1>
 
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.1.1-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
 
 </div>
 </center>
@@ -24,7 +24,7 @@ Reach your Obsidian vault from anywhere, in Claude.ai and Claude Code, without O
 ## Requirements
 
 - An always-on Linux machine, such as a home server, a NAS or a VPS
-- Your vault synced to it with [headless Obsidian Sync](https://obsidian.md/help/sync/headless) ([walkthrough](https://rolle.design/setting-up-a-headless-obsidian-instance-for-syncing)), Syncthing, git or Nextcloud
+- Your vault synced to it with [Obsidian Headless](https://obsidian.md/help/sync/headless), Syncthing, git or Nextcloud
 - Node.js 18 or newer
 - An HTTPS reverse proxy or tunnel
 
@@ -53,17 +53,10 @@ Claude.ai custom connectors accept OAuth or, in a beta not everyone has, a fixed
 
 ## Install
 
-One command, on the machine that holds the vault. It installs the code, generates a password and a token, and writes the service files ready to start.
+Run this on the machine that holds the vault. It asks for your vault path and hostname, installs the code, generates a password and a token, and writes the service files ready to start.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/rollecode/obsidian-remote-mcp/main/install.sh | bash
-```
-
-It asks for your vault path and the hostname you will serve on. To skip the questions:
-
-```bash
-VAULT=/home/you/Documents/YourVault HOSTNAME=obsidian-mcp.example.com \
-  curl -fsSL https://raw.githubusercontent.com/rollecode/obsidian-remote-mcp/main/install.sh | bash
 ```
 
 ## Install with Claude Code

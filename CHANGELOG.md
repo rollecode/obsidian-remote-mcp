@@ -1,3 +1,8 @@
+### 1.1.1: 2026-08-12
+
+* Fix wrong headless sync link
+* Trim install section to one command
+
 ### 1.1.0: 2026-08-12
 
 * Add curl bash installer
