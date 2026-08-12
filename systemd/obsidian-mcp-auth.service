@@ -1,0 +1,22 @@
+[Unit]
+Description=OAuth 2.1 authorization server and resource guard for the Obsidian MCP
+After=network-online.target obsidian-mcp.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/home/YOUR_USER/obsidian-remote-mcp
+Environment=PORT=8422
+Environment=UPSTREAM=http://127.0.0.1:8420
+Environment=ISSUER=https://obsidian-mcp.example.com
+ExecStart=/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/auth-server.js
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/YOUR_USER/.config/obsidian-mcp
+
+[Install]
+WantedBy=multi-user.target

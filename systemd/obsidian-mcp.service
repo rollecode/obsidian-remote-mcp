@@ -1,0 +1,26 @@
+[Unit]
+Description=Obsidian MCP server (stdio) exposed over Streamable HTTP via supergateway
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=YOUR_USER
+WorkingDirectory=/home/YOUR_USER/obsidian-remote-mcp
+ExecStart=/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/node_modules/supergateway/dist/index.js \
+  --stdio "/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/node_modules/obsidian-mcp/build/main.js '/home/YOUR_USER/Documents/YourVault'" \
+  --outputTransport streamableHttp \
+  --port 8420 \
+  --stateful \
+  --sessionTimeout 3600000 \
+  --healthEndpoint /healthz \
+  --logLevel info
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths="/home/YOUR_USER/Documents/YourVault"
+
+[Install]
+WantedBy=multi-user.target
