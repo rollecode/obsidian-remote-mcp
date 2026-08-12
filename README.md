@@ -10,7 +10,7 @@ Obsidian remote MCP server
 </h1>
 
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.2.1-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
 
 </div>
 </center>
@@ -154,7 +154,6 @@ Provided by [obsidian-mcp](https://github.com/StevenStavrakis/obsidian-mcp).
 | `add-tags` | Add tags to a note |
 | `remove-tags` | Remove tags from a note |
 | `rename-tag` | Rename a tag across the vault |
-| `manage-tags` | List and manage tags |
 | `list-available-vaults` | List configured vaults |
 
 Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}` instead.

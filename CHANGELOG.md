@@ -1,3 +1,9 @@
+### 1.2.1: 2026-08-13
+
+* Serve an Obsidian favicon and logo
+* Stop 404s being cached by the CDN
+* Remove a tool that does not exist
+
 ### 1.2.0: 2026-08-13
 
 * Fix tool calls failing from Claude.ai

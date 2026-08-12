@@ -245,10 +245,14 @@ function loginPage({ params, error }) {
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Obsidian MCP</title>
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" href="/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="/icon.svg">
 <style>
   body{font-family:system-ui,-apple-system,sans-serif;background:#1e1e2e;color:#cdd6f4;
        display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
   form{background:#181825;padding:2rem;border-radius:12px;width:min(90vw,360px)}
+  img{display:block;margin:0 0 .75rem}
   h1{font-size:1.1rem;margin:0 0 .25rem}
   p{color:#a6adc8;font-size:.85rem;margin:0 0 1.25rem}
   input[type=password]{width:100%;padding:.6rem;border-radius:6px;border:1px solid #313244;
@@ -259,6 +263,7 @@ function loginPage({ params, error }) {
 </style></head><body>
   <form method="POST" action="/authorize">
       ${hidden}
+      <img src="/icon.svg" alt="" width="48" height="48">
       <h1>Obsidian MCP</h1>
       <p>Authorize access to the vault.</p>
       ${error ? `<div class="err">${escapeHtml(error)}</div>` : ''}
@@ -554,7 +559,17 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
   }
 });
 
+// Without these the browser falls back to the parent domain's icon.
+app.use(express.static(path.join(__dirname, 'public'), { maxAge: '7d' }));
+
 app.get('/healthz', (_req, res) => res.type('text').send('ok'));
+
+// A CDN will happily cache a 404 for an asset path for an hour, so a file added
+// after the first request stays missing long after it exists.
+app.use((_req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.status(404).json({ error: 'not_found' });
+});
 
 app.listen(PORT, '127.0.0.1', () => {
   console.log(`obsidian-mcp auth server on 127.0.0.1:${PORT}`);
