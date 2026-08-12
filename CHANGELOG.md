@@ -1,3 +1,10 @@
+### 1.1.0: 2026-08-12
+
+* Add curl bash installer
+* Add Claude Code install instructions
+* Add release workflow
+* Add requirements section
+
 ### 1.0.0: 2026-08-12
 
 * Initial release
