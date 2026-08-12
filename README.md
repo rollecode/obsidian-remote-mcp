@@ -10,7 +10,7 @@ Obsidian remote MCP server
 </h1>
 
 
-![Version](https://img.shields.io/badge/version-1.1.1-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
+![Version](https://img.shields.io/badge/version-1.1.2-blue.svg?style=for-the-badge) ![Node](https://img.shields.io/badge/Node.js-339933?style=for-the-badge&logo=node.js&logoColor=white) ![OAuth](https://img.shields.io/badge/OAuth_2.1-EB5424?style=for-the-badge&logo=auth0&logoColor=white)
 
 </div>
 </center>
@@ -24,7 +24,7 @@ Reach your Obsidian vault from anywhere, in Claude.ai and Claude Code, without O
 ## Requirements
 
 - An always-on Linux machine, such as a home server, a NAS or a VPS
-- Your vault synced to it with [Obsidian Headless](https://obsidian.md/help/sync/headless), Syncthing, git or Nextcloud
+- Your vault synced to it with [Obsidian Sync](https://obsidian.md/help/sync) via [Headless Sync](https://obsidian.md/help/sync/headless), [Syncthing](https://github.com/syncthing/syncthing), [Obsidian Git](https://github.com/Vinzent03/obsidian-git) or [Nextcloud](https://github.com/nextcloud/desktop)
 - Node.js 18 or newer
 - An HTTPS reverse proxy or tunnel
 

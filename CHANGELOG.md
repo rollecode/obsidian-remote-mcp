@@ -1,3 +1,7 @@
+### 1.1.2: 2026-08-12
+
+* Name and link every sync method properly
+
 ### 1.1.1: 2026-08-12
 
 * Fix wrong headless sync link
