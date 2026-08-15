@@ -2,6 +2,7 @@
 
 * Make `edit-note` advertise its parameters
 * Fix "Note replaceed successfully"
+* Fix release workflow breaking on backticks
 
 ### 1.4.0: 2026-08-15
 
