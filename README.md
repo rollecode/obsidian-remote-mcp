@@ -185,7 +185,11 @@ Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}`
 
 `obsidian-mcp` starts a connection monitor that calls `server.close()` once 60 seconds pass without a request. Closing the stdio transport detaches its stdin listener, so the process keeps running but never answers again. That is reasonable where a desktop client spawns a child per session and disposes of it, but here supergateway keeps one child per session for up to an hour, and any human-paced pause between two calls is longer than a minute. The helper went deaf mid-session and every later call hung.
 
-`patches/disable-idle-close.js` makes that timeout a no-op; it runs on `postinstall` and is idempotent. Session lifetime is supergateway's job, so nothing is lost. The patch fails loudly rather than silently doing nothing if a future `obsidian-mcp` changes shape.
+`patches/disable-idle-close.js` makes that timeout a no-op; it runs on `postinstall` and is idempotent. Session lifetime is supergateway's job, so nothing is lost.
+
+`patches/fix-edit-note.js` fixes two more things in the same dependency. `edit-note` is the only tool whose schema is a zod union, and the bundled converter keeps just `type`, `properties` and `required`, none of which a union has at the top level, so the tool advertised no parameters at all and a strict client could refuse to call it. Its `replace` operation also reported "Note replaceed successfully".
+
+Both patches check that each anchor matches exactly once and abort with an explanation rather than silently doing nothing, so a future `obsidian-mcp` that has moved on fails the install instead of shipping a half-patched bundle.
 
 Two further guards keep a stuck child from ever hanging a client again:
 

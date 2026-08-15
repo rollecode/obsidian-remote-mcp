@@ -1,12 +1,12 @@
 {
   "name": "obsidian-remote-mcp",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "Remote Obsidian MCP server with OAuth 2.1, for Claude.ai custom connectors and Claude Code",
   "main": "auth-server.js",
   "scripts": {
     "start": "node auth-server.js",
     "set-password": "node set-password.js",
-    "postinstall": "node patches/disable-idle-close.js"
+    "postinstall": "node patches/disable-idle-close.js && node patches/fix-edit-note.js"
   },
   "keywords": [
     "mcp",

@@ -1,3 +1,8 @@
+### 1.4.1: 2026-08-15
+
+* Make `edit-note` advertise its parameters
+* Fix "Note replaceed successfully"
+
 ### 1.4.0: 2026-08-15
 
 * Stop the vault helper going deaf after 60s idle
