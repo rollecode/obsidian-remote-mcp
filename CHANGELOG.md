@@ -1,3 +1,8 @@
+### 1.4.0: 2026-08-15
+
+* Stop the vault helper going deaf after 60s idle
+* Patch obsidian-mcp on install
+
 ### 1.3.0: 2026-08-15
 
 * Cut calls to a wedged upstream child

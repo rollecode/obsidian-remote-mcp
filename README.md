@@ -181,11 +181,13 @@ Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}`
 | `DEFAULT_VAULT` | unset | Vault used when a tool call omits one. Serving more than one vault without this makes Claude ask which to use on every call |
 | `CALL_TIMEOUT_MS` | `120000` | How long a call may go without a byte from upstream before the session is torn down. Inactivity, not total duration |
 
-## Wedged sessions
+## Sessions that stop answering
 
-supergateway runs one `obsidian-mcp` child per session, and that child can stop answering while its process stays alive. Nothing underneath notices, so a call would hang until the client gives up, and every later call on the same session would hang with it.
+`obsidian-mcp` starts a connection monitor that calls `server.close()` once 60 seconds pass without a request. Closing the stdio transport detaches its stdin listener, so the process keeps running but never answers again. That is reasonable where a desktop client spawns a child per session and disposes of it, but here supergateway keeps one child per session for up to an hour, and any human-paced pause between two calls is longer than a minute. The helper went deaf mid-session and every later call hung.
 
-Two things prevent that:
+`patches/disable-idle-close.js` makes that timeout a no-op; it runs on `postinstall` and is idempotent. Session lifetime is supergateway's job, so nothing is lost. The patch fails loudly rather than silently doing nothing if a future `obsidian-mcp` changes shape.
+
+Two further guards keep a stuck child from ever hanging a client again:
 
 - A call that goes `CALL_TIMEOUT_MS` without a byte from upstream is cut, and the session is terminated so the wedged child dies with it. The SSE `GET` stream is exempt, since it is idle by design.
 - A request carrying a session the upstream no longer knows gets `404`, not the `400` supergateway returns. Only `404` obliges a client to send a fresh `InitializeRequest`, per the session management rules in the MCP 2025-06-18 transport spec, so clients recover on their own.
