@@ -34,21 +34,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
 
+      # Written to a file rather than an output. An expression pasted into a run
+      # block is substituted before bash parses it, so a backtick or a quote in
+      # the changelog would run as a command instead of being release notes.
       - name: Extract release notes
         if: steps.check.outputs.exists == 'false'
-        id: notes
-        run: |
-          # Extract notes for this version (between first and second ### headers)
-          NOTES=$(awk '/^### [0-9]/{if(p) exit; p=1; next} p' CHANGELOG.md)
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+        run: awk '/^### [0-9]/{if(p) exit; p=1; next} p' CHANGELOG.md > "$RUNNER_TEMP/release-notes.md"
 
       - name: Create release
         if: steps.check.outputs.exists == 'false'
         run: |
-          gh release create "v${{ steps.version.outputs.version }}" \
-            --title "v${{ steps.version.outputs.version }}" \
-            --notes "${{ steps.notes.outputs.notes }}"
+          gh release create "v$VERSION" \
+            --title "v$VERSION" \
+            --notes-file "$RUNNER_TEMP/release-notes.md"
         env:
           GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.version.outputs.version }}
