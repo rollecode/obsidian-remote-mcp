@@ -26,6 +26,10 @@ if (!ISSUER) {
 const RESOURCE = `${ISSUER}/mcp`;
 
 const DEFAULT_VAULT = process.env.DEFAULT_VAULT || '';
+// How long a proxied call may go without a single byte from upstream before it
+// is treated as wedged. Inactivity, not total duration, so a slow tool that
+// streams progress is never cut.
+const CALL_TIMEOUT_MS = Number(process.env.CALL_TIMEOUT_MS || 120000);
 const CONFIG_DIR = process.env.CONFIG_DIR || path.join(os.homedir(), '.config', 'obsidian-mcp');
 const DB_PATH = path.join(CONFIG_DIR, 'oauth.db');
 const PASSWORD_HASH_PATH = path.join(CONFIG_DIR, 'password-hash');
@@ -483,6 +487,43 @@ function relaxVaultRequirement(msg) {
   return msg;
 }
 
+// The upstream spawns one stdio child per session, and that child can stop
+// answering while its process stays alive. Nothing below this layer notices, so
+// without a stall timer the call hangs until the client gives up, and because
+// the session outlives it, every later call on the same session hangs too.
+class StallError extends Error {}
+
+// Aborting the fetch signal does not reliably reject a read that is already
+// parked, so the deadline is raced against the read rather than delegated to it.
+function withDeadline(promise, ms) {
+  if (!ms) return promise;
+  return new Promise((resolve, reject) => {
+    const handle = setTimeout(() => reject(new StallError()), ms);
+    promise.then(
+      (value) => {
+        clearTimeout(handle);
+        resolve(value);
+      },
+      (err) => {
+        clearTimeout(handle);
+        reject(err);
+      }
+    );
+  });
+}
+
+// Terminating the session upstream kills the wedged child with it, so the next
+// call gets a clean "no valid session" and the client re-initializes.
+async function terminateUpstreamSession(sessionId) {
+  if (!sessionId) return;
+  sessionProtocol.delete(sessionId);
+  try {
+    await fetch(`${UPSTREAM}/mcp`, { method: 'DELETE', headers: { 'mcp-session-id': sessionId } });
+  } catch {
+    // The session is being abandoned either way.
+  }
+}
+
 // Streamable HTTP keeps the response open, so this proxies by stream rather
 // than buffering. express.json() has already consumed the body, so it is
 // re-serialised on the way out.
@@ -521,8 +562,40 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
     headers['content-type'] = headers['content-type'] || 'application/json';
   }
 
+  // The GET stream is idle by design and must never be cut; only calls that are
+  // waiting on the child are watched.
+  const watched = !['GET', 'HEAD', 'DELETE'].includes(req.method);
+  const deadline = watched ? CALL_TIMEOUT_MS : 0;
+  const abort = new AbortController();
+
   try {
-    const upstream = await fetch(url, { method: req.method, headers, body, duplex: 'half' });
+    const upstream = await withDeadline(
+      fetch(url, {
+        method: req.method,
+        headers,
+        body,
+        duplex: 'half',
+        signal: abort.signal,
+      }),
+      deadline
+    );
+
+    // The upstream answers an unknown or terminated session with 400, but the
+    // spec reserves 404 for that case, and only 404 obliges the client to start
+    // a new session. With 400 it reports a dead connection and stays stuck.
+    if (upstream.status === 400 && clientSessionId) {
+      const text = await upstream.text();
+      if (text.includes('No valid session ID provided')) {
+        sessionProtocol.delete(clientSessionId);
+        return res.status(404).json({
+          jsonrpc: '2.0',
+          id: req.body?.id ?? null,
+          error: { code: -32001, message: 'Session not found, start a new one' },
+        });
+      }
+      return res.status(400).type('application/json').send(text);
+    }
+
     res.status(upstream.status);
     upstream.headers.forEach((value, key) => {
       if (['content-encoding', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) return;
@@ -534,26 +607,44 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
 
     // Small enough to buffer; everything else streams.
     if (isInitialize) {
-      const text = await upstream.text();
+      const text = await withDeadline(upstream.text(), deadline);
       const match = text.match(/"protocolVersion"\s*:\s*"([^"]+)"/);
       if (match) rememberProtocol(newSessionId, match[1]);
       res.end(text);
       return;
     }
     if (isToolsList && DEFAULT_VAULT) {
-      res.end(rewriteSse(await upstream.text(), relaxVaultRequirement));
+      res.end(rewriteSse(await withDeadline(upstream.text(), deadline), relaxVaultRequirement));
       return;
     }
 
     const reader = upstream.body.getReader();
     for (;;) {
-      const { done, value } = await reader.read();
+      // The deadline covers each read, so it measures silence rather than the
+      // total time a legitimately slow, chatty call is allowed to take.
+      const { done, value } = await withDeadline(reader.read(), deadline);
       if (done) break;
       res.write(Buffer.from(value));
       if (typeof res.flush === 'function') res.flush();
     }
     res.end();
   } catch (err) {
+    if (err instanceof StallError) {
+      abort.abort();
+      await terminateUpstreamSession(clientSessionId);
+      console.error(`upstream silent for ${CALL_TIMEOUT_MS}ms, session terminated: ${clientSessionId || 'none'}`);
+      if (!res.headersSent) {
+        // 404 rather than an error body, because that is what obliges the
+        // client to open a new session instead of reporting a dead one.
+        res.status(404).json({
+          jsonrpc: '2.0',
+          id: req.body?.id ?? null,
+          error: { code: -32001, message: 'Session not found, start a new one' },
+        });
+        return;
+      }
+      return res.end();
+    }
     if (!res.headersSent) res.status(502).json({ error: 'upstream_unavailable' });
     else res.end();
   }
@@ -576,5 +667,6 @@ app.listen(PORT, '127.0.0.1', () => {
   console.log(`  issuer:   ${ISSUER}`);
   console.log(`  resource: ${RESOURCE}`);
   console.log(`  upstream: ${UPSTREAM}`);
+  console.log(`  call timeout: ${CALL_TIMEOUT_MS}ms`);
   if (!readPasswordHash()) console.warn('  WARNING: no password hash set - /authorize will reject everything');
 });

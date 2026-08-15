@@ -176,6 +176,11 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=false
 ReadWritePaths="$VAULT"
+# supergateway binds every interface and has no --host flag, so this port would
+# otherwise serve the unauthenticated MCP to the whole LAN. Only the auth server
+# on loopback may reach it.
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target

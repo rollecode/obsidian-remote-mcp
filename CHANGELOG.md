@@ -1,3 +1,11 @@
+### 1.3.0: 2026-08-15
+
+* Cut calls to a wedged upstream child
+* Terminate the session when upstream stalls
+* Return 404 for unknown sessions so clients reconnect
+* Add `CALL_TIMEOUT_MS`
+* Confine port 8420 to loopback
+
 ### 1.2.1: 2026-08-13
 
 * Serve an Obsidian favicon and logo

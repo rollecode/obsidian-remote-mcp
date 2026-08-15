@@ -21,6 +21,11 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=false
 ReadWritePaths="/home/YOUR_USER/Documents/YourVault"
+# supergateway binds every interface and has no --host flag, so port 8420 would
+# otherwise serve the unauthenticated MCP to the whole LAN. Only the auth server
+# on loopback may reach it.
+IPAddressDeny=any
+IPAddressAllow=localhost
 
 [Install]
 WantedBy=multi-user.target

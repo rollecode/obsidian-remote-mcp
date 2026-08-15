@@ -47,7 +47,7 @@ obsidian-mcp (stdio)
   -> Cloudflare Tunnel     https://obsidian-mcp.example.com
 ```
 
-Only the auth server is reachable from outside. Port 8420 speaks no authentication at all and stays bound to localhost.
+Only the auth server is reachable from outside. Port 8420 speaks no authentication at all. supergateway offers no flag to choose a bind address and listens on every interface, so the unit confines it with `IPAddressDeny=any` and `IPAddressAllow=localhost`; without that it would answer anyone on the LAN.
 
 Claude.ai custom connectors accept OAuth or, in a beta not everyone has, a fixed request header. Claude Code accepts a header directly. This serves both: an OAuth 2.1 flow per the MCP 2025-06-18 authorization spec, and a static token read from a file.
 
@@ -179,6 +179,16 @@ Most tools take `{vault, folder, filename}`. `delete-note` takes `{vault, path}`
 | `UPSTREAM` | `http://127.0.0.1:8420` | Where supergateway is listening |
 | `CONFIG_DIR` | `~/.config/obsidian-mcp` | Password hash, static token, OAuth database |
 | `DEFAULT_VAULT` | unset | Vault used when a tool call omits one. Serving more than one vault without this makes Claude ask which to use on every call |
+| `CALL_TIMEOUT_MS` | `120000` | How long a call may go without a byte from upstream before the session is torn down. Inactivity, not total duration |
+
+## Wedged sessions
+
+supergateway runs one `obsidian-mcp` child per session, and that child can stop answering while its process stays alive. Nothing underneath notices, so a call would hang until the client gives up, and every later call on the same session would hang with it.
+
+Two things prevent that:
+
+- A call that goes `CALL_TIMEOUT_MS` without a byte from upstream is cut, and the session is terminated so the wedged child dies with it. The SSE `GET` stream is exempt, since it is idle by design.
+- A request carrying a session the upstream no longer knows gets `404`, not the `400` supergateway returns. Only `404` obliges a client to send a fresh `InitializeRequest`, per the session management rules in the MCP 2025-06-18 transport spec, so clients recover on their own.
 
 ## Security
 
