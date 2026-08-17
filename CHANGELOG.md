@@ -1,3 +1,7 @@
+### 1.4.2: 2026-08-17
+
+* Simplify the sign-in page
+
 ### 1.4.1: 2026-08-15
 
 * Make `edit-note` advertise its parameters

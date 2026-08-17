@@ -253,26 +253,36 @@ function loginPage({ params, error }) {
 <link rel="icon" href="/icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="/icon.svg">
 <style>
-  body{font-family:system-ui,-apple-system,sans-serif;background:#1e1e2e;color:#cdd6f4;
-       display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0}
-  form{background:#181825;padding:2rem;border-radius:12px;width:min(90vw,360px)}
-  img{display:block;margin:0 0 .75rem}
-  h1{font-size:1.1rem;margin:0 0 .25rem}
-  p{color:#a6adc8;font-size:.85rem;margin:0 0 1.25rem}
-  input[type=password]{width:100%;padding:.6rem;border-radius:6px;border:1px solid #313244;
-       background:#11111b;color:#cdd6f4;box-sizing:border-box;font-size:1rem}
-  button{width:100%;margin-top:1rem;padding:.6rem;border:0;border-radius:6px;
-       background:#89b4fa;color:#11111b;font-weight:600;font-size:1rem;cursor:pointer}
-  .err{color:#f38ba8;font-size:.85rem;margin-bottom:.75rem}
+  :root{color-scheme:light dark;--fg:#111;--muted:#666;--line:#d8d8d8;--bg:#fff}
+  @media (prefers-color-scheme:dark){
+    :root{--fg:#eee;--muted:#999;--line:#333;--bg:#0e0e0e}
+  }
+  *{box-sizing:border-box}
+  body{font:15px/1.5 system-ui,-apple-system,sans-serif;background:var(--bg);color:var(--fg);
+       display:flex;min-height:100vh;align-items:center;justify-content:center;margin:0;padding:1.5rem}
+  form{width:100%;max-width:20rem}
+  img{display:block;width:40px;height:40px;margin-bottom:1.25rem}
+  h1{font-size:1rem;font-weight:600;margin:0 0 .25rem}
+  p{color:var(--muted);margin:0 0 1.5rem}
+  label{display:block;font-size:.8125rem;color:var(--muted);margin-bottom:.375rem}
+  input{width:100%;padding:.5rem .625rem;border:1px solid var(--line);border-radius:3px;
+        background:transparent;color:inherit;font:inherit}
+  input:focus{outline:2px solid var(--fg);outline-offset:-1px;border-color:transparent}
+  button{width:100%;margin-top:1rem;padding:.5rem;border:1px solid var(--fg);border-radius:3px;
+         background:var(--fg);color:var(--bg);font:inherit;cursor:pointer}
+  button:hover{opacity:.85}
+  .err{color:#c0392b;margin:0 0 1rem}
+  @media (prefers-color-scheme:dark){.err{color:#ff7a6b}}
 </style></head><body>
   <form method="POST" action="/authorize">
       ${hidden}
-      <img src="/icon.svg" alt="" width="48" height="48">
-      <h1>Obsidian MCP</h1>
-      <p>Authorize access to the vault.</p>
-      ${error ? `<div class="err">${escapeHtml(error)}</div>` : ''}
-      <input type="password" name="password" placeholder="Password" autofocus autocomplete="current-password" required>
-      <button type="submit">Authorize</button>
+      <img src="/icon.svg" alt="">
+      <h1>Obsidian</h1>
+      <p>Sign in to give this app access to your vault.</p>
+      ${error ? `<p class="err">${escapeHtml(error)}</p>` : ''}
+      <label for="password">Password</label>
+      <input id="password" type="password" name="password" autofocus autocomplete="current-password" required>
+      <button type="submit">Continue</button>
   </form>
 </body></html>`;
 }
