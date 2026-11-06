@@ -1,6 +1,6 @@
 {
   "name": "obsidian-remote-mcp",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "description": "Remote Obsidian MCP server with OAuth 2.1, for Claude.ai custom connectors and Claude Code",
   "main": "auth-server.js",
   "scripts": {
@@ -22,7 +22,6 @@
     "@modelcontextprotocol/sdk": "^1.30.0",
     "better-sqlite3": "^13.0.3",
     "express": "^5.2.1",
-    "supergateway": "^3.4.3",
     "yaml": "^2.9.0"
   }
 }

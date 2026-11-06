@@ -155,7 +155,7 @@ trap 'rm -rf "$UNIT_TMP"' EXIT
 
 cat > "$UNIT_TMP/obsidian-mcp.service" <<EOF
 [Unit]
-Description=Obsidian MCP server (stdio) exposed over Streamable HTTP via supergateway
+Description=Obsidian MCP server over Streamable HTTP, one shared vault index for all sessions
 After=network-online.target
 Wants=network-online.target
 
@@ -163,23 +163,14 @@ Wants=network-online.target
 Type=simple
 User=$USER
 WorkingDirectory=$INSTALL_DIR
-ExecStart=$NODE_BIN $INSTALL_DIR/node_modules/supergateway/dist/index.js \\
-  --stdio "$NODE_BIN $INSTALL_DIR/vault-mcp.js '$VAULT'" \\
-  --outputTransport streamableHttp \\
-  --port $MCP_PORT \\
-  --stateful \\
-  --sessionTimeout 3600000 \\
-  --healthEndpoint /healthz \\
-  --logLevel info
+ExecStart=$NODE_BIN $INSTALL_DIR/vault-mcp.js --http $MCP_PORT '$VAULT'
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=false
 ReadWritePaths="$VAULT"
-# supergateway binds every interface and has no --host flag, so this port would
-# otherwise serve the unauthenticated MCP to the whole LAN. Only the auth server
-# on loopback may reach it.
+# The server binds loopback already; this keeps it there if that ever changes.
 IPAddressDeny=any
 IPAddressAllow=localhost
 

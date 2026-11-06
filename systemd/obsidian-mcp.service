@@ -1,5 +1,5 @@
 [Unit]
-Description=Obsidian MCP server (stdio) exposed over Streamable HTTP via supergateway
+Description=Obsidian MCP server over Streamable HTTP, one shared vault index for all sessions
 After=network-online.target
 Wants=network-online.target
 
@@ -7,23 +7,14 @@ Wants=network-online.target
 Type=simple
 User=YOUR_USER
 WorkingDirectory=/home/YOUR_USER/obsidian-remote-mcp
-ExecStart=/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/node_modules/supergateway/dist/index.js \
-  --stdio "/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/vault-mcp.js '/home/YOUR_USER/Documents/YourVault'" \
-  --outputTransport streamableHttp \
-  --port 8420 \
-  --stateful \
-  --sessionTimeout 3600000 \
-  --healthEndpoint /healthz \
-  --logLevel info
+ExecStart=/usr/bin/node /home/YOUR_USER/obsidian-remote-mcp/vault-mcp.js --http 8420 '/home/YOUR_USER/Documents/YourVault'
 Restart=on-failure
 RestartSec=5
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=false
 ReadWritePaths="/home/YOUR_USER/Documents/YourVault"
-# supergateway binds every interface and has no --host flag, so port 8420 would
-# otherwise serve the unauthenticated MCP to the whole LAN. Only the auth server
-# on loopback may reach it.
+# The server binds loopback already; this keeps it there if that ever changes.
 IPAddressDeny=any
 IPAddressAllow=localhost
 

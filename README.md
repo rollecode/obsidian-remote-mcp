@@ -46,14 +46,13 @@ Reach your Obsidian vault from anywhere, in Claude.ai and Claude Code, without O
 ## How it works
 
 ```
-vault-mcp.js (stdio)       reads and writes the vault
-  -> supergateway          stdio to Streamable HTTP, :8420
+vault-mcp.js --http       reads and writes the vault, :8420
   -> auth-server.js        OAuth 2.1 + token check, :8422
   -> nginx                 :8421
   -> Cloudflare Tunnel     https://obsidian-mcp.example.com
 ```
 
-Only the auth server is reachable from outside. Port 8420 speaks no authentication at all. supergateway offers no flag to choose a bind address and listens on every interface, so the unit confines it with `IPAddressDeny=any` and `IPAddressAllow=localhost`; without that it would answer anyone on the LAN.
+Only the auth server is reachable from outside. Port 8420 speaks no authentication at all, so the vault server binds 127.0.0.1 and the unit adds `IPAddressDeny=any` and `IPAddressAllow=localhost` on top. One process serves every session from one shared vault index.
 
 Claude.ai custom connectors accept OAuth or, in a beta not everyone has, a fixed request header. Claude Code accepts a header directly. This serves both: an OAuth 2.1 flow per the MCP 2025-06-18 authorization spec, and a static token read from a file.
 
@@ -232,7 +231,7 @@ Obsidian writes fields the spec does not define, `styleAttributes` on every node
 
 ## Development
 
-The vault server runs on its own, without the auth server or supergateway, which is the quickest way to try a change:
+The vault server runs on its own over stdio, without the auth server, which is the quickest way to try a change:
 
 ```bash
 npm install
@@ -260,7 +259,7 @@ npx @modelcontextprotocol/inspector node vault-mcp.js ~/Documents/YourVault
 |----------|---------|---------|
 | `ISSUER` | required | Public HTTPS base URL, no trailing slash |
 | `PORT` | `8422` | Port the auth server listens on |
-| `UPSTREAM` | `http://127.0.0.1:8420` | Where supergateway is listening |
+| `UPSTREAM` | `http://127.0.0.1:8420` | Where `vault-mcp.js --http` is listening |
 | `CONFIG_DIR` | `~/.config/obsidian-mcp` | Password hash, static token, OAuth database |
 | `DEFAULT_VAULT` | unset | Vault used when a tool call omits one. Serving more than one vault without this makes Claude ask which to use on every call |
 | `CALL_TIMEOUT_MS` | `120000` | How long a call may go without a byte from upstream before the session is torn down. Inactivity, not total duration |
@@ -282,7 +281,7 @@ Deletions move to the vault's `.trash`, where Obsidian lists them under deleted 
 Two guards in the auth server keep a stuck child from hanging a client:
 
 - A call that goes `CALL_TIMEOUT_MS` without a byte from upstream is cut, and the session is terminated so the wedged child dies with it. The SSE `GET` stream is exempt, since it is idle by design.
-- A request carrying a session the upstream no longer knows gets `404`, not the `400` supergateway returns. Only `404` obliges a client to send a fresh `InitializeRequest`, per the session management rules in the MCP 2025-06-18 transport spec, so clients recover on their own.
+- A request carrying a session the upstream no longer knows gets `404`, not a `400`. Only `404` obliges a client to send a fresh `InitializeRequest`, per the session management rules in the MCP 2025-06-18 transport spec, so clients recover on their own.
 
 ## Security
 
