@@ -1,3 +1,8 @@
+### 1.6.0: 2026-11-06
+
+* Serve Streamable HTTP without supergateway
+* Fix `tools/list` hanging behind the auth server
+
 ### 1.5.0: 2026-10-24
 
 * Add Obsidian canvas support
