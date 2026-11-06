@@ -615,8 +615,9 @@ app.all('/mcp{/*path}', cors, authorizeRequest, async (req, res) => {
     }
 
     res.status(upstream.status);
+    // content-length too: the tools/list rewrite changes the body size
     upstream.headers.forEach((value, key) => {
-      if (['content-encoding', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) return;
+      if (['content-encoding', 'content-length', 'transfer-encoding', 'connection'].includes(key.toLowerCase())) return;
       res.set(key, value);
     });
     if (!upstream.body) return res.end();

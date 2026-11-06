@@ -14,6 +14,7 @@ const path = require('path');
 const assert = require('assert');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { StdioClientTransport } = require('@modelcontextprotocol/sdk/client/stdio.js');
+const { spawn } = require('child_process');
 
 let passed = 0;
 let failed = 0;
@@ -116,6 +117,64 @@ function expectError(result, label) {
 
 function contains(haystack, needle, label) {
   assert.ok(haystack.includes(needle), `${label}: expected to find "${needle}" in:\n${haystack}`);
+}
+
+const VAULT_PORT = 18420;
+const AUTH_PORT = 18422;
+const TEST_TOKEN = 'test-token';
+// Well under Node's 5 s keep-alive close, which is what a wrong length waits for.
+const PROXY_DEADLINE_MS = 2000;
+
+async function waitForHealth(port) {
+  for (let i = 0; i < 50; i++) {
+    try {
+      if ((await fetch(`http://127.0.0.1:${port}/healthz`)).ok) return;
+    } catch {
+      // Not listening yet.
+    }
+    await new Promise((r) => setTimeout(r, 100));
+  }
+  throw new Error(`nothing listening on ${port}`);
+}
+
+// vault-mcp.js --http behind auth-server.js, the chain the live service runs.
+async function startProxyChain(root, vault) {
+  const configDir = path.join(root, 'auth-config');
+  fs.mkdirSync(configDir);
+  fs.writeFileSync(path.join(configDir, 'token'), TEST_TOKEN);
+  const children = [
+    spawn(process.execPath, [path.join(__dirname, '..', 'vault-mcp.js'), '--http', String(VAULT_PORT), vault], { stdio: 'ignore' }),
+    spawn(process.execPath, [path.join(__dirname, '..', 'auth-server.js')], {
+      stdio: 'ignore',
+      env: {
+        ...process.env,
+        PORT: String(AUTH_PORT),
+        UPSTREAM: `http://127.0.0.1:${VAULT_PORT}`,
+        ISSUER: `http://127.0.0.1:${AUTH_PORT}`,
+        DEFAULT_VAULT: 'test-vault',
+        CONFIG_DIR: configDir,
+      },
+    }),
+  ];
+  await waitForHealth(VAULT_PORT);
+  await waitForHealth(AUTH_PORT);
+  return () => children.forEach((child) => child.kill());
+}
+
+async function proxyPost(body, sessionId) {
+  const headers = {
+    'content-type': 'application/json',
+    accept: 'application/json, text/event-stream',
+    authorization: `Bearer ${TEST_TOKEN}`,
+  };
+  if (sessionId) headers['mcp-session-id'] = sessionId;
+  const res = await fetch(`http://127.0.0.1:${AUTH_PORT}/mcp`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(PROXY_DEADLINE_MS),
+  });
+  return { res, text: await res.text() };
 }
 
 async function main() {
@@ -610,6 +669,24 @@ async function main() {
   await test('a missing note is reported, not thrown', async () => {
     contains(expectError(await call('read-note', { path: 'Ghost.md' }), 'read-note'), 'No such note', 'message');
   });
+
+  process.stdout.write('\nAuth proxy\n');
+  const stopProxy = await startProxyChain(root, vault);
+  await test('tools/list through the auth server arrives whole and on time', async () => {
+    const init = await proxyPost({
+      jsonrpc: '2.0',
+      id: 1,
+      method: 'initialize',
+      params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } },
+    });
+    const sessionId = init.res.headers.get('mcp-session-id');
+    assert.ok(sessionId, 'initialize returned no session');
+    const { res, text } = await proxyPost({ jsonrpc: '2.0', id: 2, method: 'tools/list' }, sessionId);
+    const length = res.headers.get('content-length');
+    if (length) assert.strictEqual(Number(length), Buffer.byteLength(text), 'content-length does not match the body');
+    contains(text, 'Defaults to \\"test-vault\\"', 'vault default');
+  });
+  stopProxy();
 
   await client.close();
 
