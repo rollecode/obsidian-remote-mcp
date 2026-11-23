@@ -1,3 +1,7 @@
+### 1.6.1: 2026-11-24
+
+* Fix search failing on links with a bare `%`
+
 ### 1.6.0: 2026-11-06
 
 * Serve Streamable HTTP without supergateway

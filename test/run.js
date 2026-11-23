@@ -213,6 +213,13 @@ async function main() {
     }
   });
 
+  process.stdout.write('\nLink parsing\n');
+  await test('a link with a bare % does not break parsing', () => {
+    const { parseLinks } = require('../lib/markdown');
+    const links = parseLinks('[sale](50%off.md) and [ok](Some%20Note.md)');
+    assert.deepStrictEqual(links.map((l) => l.target), ['50%off.md', 'Some Note.md']);
+  });
+
   process.stdout.write('\nBrowsing\n');
   await test('list-available-vaults names the vault after its folder', async () => {
     contains(expectOk(await call('list-available-vaults'), 'list-available-vaults'), 'test-vault', 'vault name');
